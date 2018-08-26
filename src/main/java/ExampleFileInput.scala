@@ -1,9 +1,6 @@
-import java.io.{File, PrintWriter}
-
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark.sql._
 import org.apache.spark.broadcast._
-import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.mllib.recommendation.{ALS, Rating}
 
 import scala.util.Random
@@ -42,26 +39,18 @@ object ExampleFileInput extends Serializable {
       setRank(10).
       setAlpha(1.0)
     val trainDataRdd = trainData.rdd
-    //trainDataRdd.saveAsTextFile("new.txt")
+
     val trainDataRatingRdd = trainDataRdd.map(x=>x.toString).map(x=>x.substring(1,x.length-1).split(",")).
       map(x => Rating(x(0).toInt,x(1).toInt,x(2).toDouble))
 
 
     val model = ALS.train(trainDataRatingRdd,10,5)
 
-
-    //val movieRecommendations = model.recommendForAllUsers(5)
-   //val users = trainData.select(als.getUserCol).distinct().limit(3)
-    //val userSubsetRecs = model.recommendForUserSubset(users, 10)
-    //userSubsetRecs.persist()
-    //userSubsetRecs.collect()
-    //val userSubsetRecsWithName = userSubsetRecs.join(artistByID,userSubsetRecs("artistID")===artistByID("id"),"inner")
-    //userSubsetRecsWithName.show()
-    artistByID.show()
     val recommendations = model.recommendProducts(2096705, 10)
     for (recommendation <- recommendations) {
-      //println( artistByID.select("name").where("id = " + "'" + recommendation.product.toInt + "'") + " score " + recommendation.rating )
-      println(recommendation.product.toInt  + " score " + recommendation.rating )
+      val artist = artistByID.select("name").where("id = " + "'" + recommendation.product.toInt + "'").
+        map(x=>x.toString().substring(1,x.toString().length-1)).collect()
+      println(artist.mkString + " score " + recommendation.rating )
     }
 
   }
@@ -110,12 +99,6 @@ object ExampleFileInput extends Serializable {
       (userID , finalArtistID, count)
     }.toDF("user","artist","count")
   }
-
-
-
-  /*def makeRecommendations(model: ALSModel, userID: Int, howMany: Int): Dataframe={
-    val toRecommend = model.itemFactors.select("id".as("artist"))
-  }*/
 
 }
 
